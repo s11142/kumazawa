@@ -50,8 +50,8 @@ ref,COP�ʤɸ������Ф�0.01%�ʲ�
 #define DM          (5.0e-4)	//熱交換流体の質量の変化幅
 #endif
 
-#define T_HIGH         (40.0)    //high end[K]
-#define T_LOW          (22.0)    //low  end[K]
+#define T_HIGH         (39.0)    //high end[K]
+#define T_LOW          (21.0)    //low  end[K]
 #define GAS_FLOW     (1.0e-3)    //m_dot[kg/sec](1秒間に流れる熱交換流体の質量)
 //-- LAYER parameter -------------------------------------
 #define LAYER             (2)    //層数（例：2層の場合→2) ※
@@ -431,9 +431,13 @@ void hot_to_cold(double Thigh, double fac1,
 		Tgas[0][j] = Thigh;
 		for(i = 0; i < SPACE; i++){
 			lay = layer_change(i,layer_parameter);
+			// printf("i = %d\n", i);
+			// printf("j = %d\n", j);
+			printf("hot_to_cold: TempC=%f K, i =%d, j=%d\n", Treg[i][j-1], i, j);
 			C_reg = capacity(lay, field0T, data_C, Treg[i][j-1]);
 			Treg[i][j] = Treg[i][j-1] + (fac2[lay]/C_reg)*(Tgas[i][j-1] - Treg[i][j-1]);
 		}
+
 		for(i = 0; i < SPACE-1; i++){
 			Tgas[i+1][j] = Tgas[i][j] + fac1*(Treg[i][j] - Tgas[i][j]);
 		}
@@ -456,6 +460,7 @@ void cold_to_hot(double Tlow, double fac1,
 		Tgas[SPACE-1][j] = Tlow;
 		for(i = SPACE-1; i >= 0; i--){
 			lay = layer_change(i,layer_parameter);
+			printf("cold_to_hot: TempC=%f K, i =%d, j=%d\n", Treg[i][j-1], i, j);
 			C_reg = capacity(lay, field5T, data_C, Treg[i][j-1]);
 			Treg[i][j] = Treg[i][j-1] + (fac2[lay]/C_reg)*(Tgas[i][j-1] - Treg[i][j-1]);
 		}
@@ -592,6 +597,7 @@ double capacity(int lay, int field, double data_C[LAYER][3][NUM], double imput_t
 	double temp_C = imput_temp;
 
 	for(i = 0; i < NUM; i++){
+		// 初期化処理だよ熊澤くん。
 		if(temp_C < data_C[lay][0][i]){
 			 temp_A = data_C[lay][0][i-1];
 			 temp_B = data_C[lay][0][i];
