@@ -95,13 +95,13 @@ int main(void)
 	int n2, n4;
 	int n_capa, n_entropy, n_He;	// 入力ファイルの比熱の行番号、エントロピーの行番号、Heガスの行番号
 	int lay;
-	double fac1, fac2[LAYER];
+	double fac1, fac2[LAYER];  //熱交換流体と磁性体の方程式を離散化した時の係数・fac2は磁性体の方程式の係数であるため、層によって値を変更する必要がある
 	double L,r,Ac,dh,eps,as,h,Aw;
 	double rho_r[LAYER];
 	double dx, dt;
 	double Thigh, Tlow, Tmid;
 	double tau_cycle, tau_flow;
-	double Ntu, lambda[LAYER];
+	double Ntu, lambda[LAYER];//計算式の意味を調べる必要あり
 	double m_dot;
 	double C_gas;
 	double rho_f;
@@ -109,8 +109,8 @@ int main(void)
 	double k_gas;
 	double M_reg[LAYER];
 	double Re, Pr, Nu;  //non dimension NUM
-	double data_C[LAYER][3][NUM]; /*[material1,2][Temp,0T,5T][NUM]*/
-	double data_S[LAYER][3][NUM]; /*[material1,2][Temp,0T,5T][NUM]*/
+	double data_C[LAYER][3][NUM]; /*[1層目、2層目][Temp,0T,5T][NUM]*/
+	double data_S[LAYER][3][NUM]; /*[1層目、2層目][Temp,0T,5T][NUM]*/
 //	int layer_parameter[LAYER+1];
 	double He5atm[5][15];
 //Temp[K]	density[kg/m3]	Cp[J/kg-K]	viscosity[kg/m-s]	k[W/m-K]=[J/m-K-s]
@@ -244,7 +244,7 @@ debyesample9/S_DyAl2_20K_debye.txt
 	C_gas     = gas_data[2];	//[J/kg-K]:流体の比熱
 	vis_gas   = gas_data[3];	//[kg/m-sec]:流体の粘性係数
 	k_gas     = gas_data[4];	//[J/m-K-sec]:流体の熱伝導係数
-	h         = 0.0;      		//[W/m2-K] = [J/sec-m2-K]:heat conduction ratio
+	//h         = 0.0;      		//[W/m2-K] = [J/sec-m2-K]:heat conduction ratio
 
 	//== other parameters ============
 	Aw        = Ac*as;          //[]
@@ -285,18 +285,17 @@ debyesample9/S_DyAl2_20K_debye.txt
 	#ifdef AUTO
 	fprintf(stderr, "RUNNING AUTO MODE !!\n");
 	clock_t start_all, end_all;
-	start_all = clock();
+	start_all = clock();                      //全体でかかった時間
 	/* M_STARTの値からDMずつ足していき、M_ENDよりm_dotが大きくなるまで処理を繰り返す */
 	for(m_dot = M_START; m_dot <= M_END; m_dot += DM){
 		clock_t start, end;
-		start = clock();
+		start = clock();　　　　　　　　　　　　 //ある質量流量での実行にかかった時間
 	#endif
 
 		Re = (m_dot*dh)/(Ac*vis_gas); //レイノルズ数の導出
 		Pr = (vis_gas*C_gas)/k_gas;
 		Nu = 2.0 + 1.1*pow(Re, 0.6)*pow(Pr, 0.33333);
 		h  = (Nu*k_gas)/dh;
-//		h = 3000.0;
 
 		fprintf(stderr, "m_dot = %g h = %f\n", m_dot, h);
 
@@ -310,7 +309,7 @@ debyesample9/S_DyAl2_20K_debye.txt
 			fac2[lay] = (dt * h * Aw * L)/(M_reg[lay]); //1.0/C_reg
 		}
 
-		initialize(Tgas, Treg);
+		initialize(Tgas, Treg);   //main loopに入る前に熱交換流体・磁性体の温度を初期化
 
 		//== main loop ==============================================
 		for(cycle = 0;  cycle < CYCLE_END; cycle++){
@@ -379,14 +378,14 @@ void initialize(double Tgas[SPACE][TIME], double Treg[SPACE][TIME])
 
 	for(j = 0; j < TIME; j++){
 		for(i = 0; i < SPACE; i++){
-			Tgas[i][j] = 0.0;
-			Treg[i][j] = 0.0;
+			Tgas[i][j] = 0.0;          //Tgasに変な数字が入らないように0を代入し初期化
+			Treg[i][j] = 0.0;　　　　　//Tregに変な数字が入らないように0を代入し初期化
 		}
 	}
-	deltaTemp = (Thigh - Tlow)/(1.0 * SPACE - 1.0);
+	deltaTemp = (Thigh - Tlow)/(1.0 * SPACE - 1.0); 　　//各spaceで等間隔に温度が上昇する
 	for(i = 0; i < SPACE; i++){
-		Tgas[i][0] = Thigh - 1.0*i*deltaTemp;
-		Treg[i][0] = Thigh - 1.0*i*deltaTemp;
+		Tgas[i][0] = Thigh - 1.0*i*deltaTemp; 　//t=0のときのiの位置での熱交換流体の温度
+		Treg[i][0] = Thigh - 1.0*i*deltaTemp;  //t=0のときのiの位置での磁性体の温度
 	}
 }
 
@@ -488,7 +487,7 @@ void mag_demag(int time, double Treg[SPACE][TIME], double data_S[LAYER][3][NUM])
 
 		//printf("temp_C=%g\n", temp_C);
 		for(j = 0; j < NUM; j++){
-			if(temp_C < data_S[lay][0][j]){
+			if(temp_C < data_S[lay][0][j]){            //励消磁前の磁性体の温度からエントロピーを決定
 				temp_A    = data_S[lay][0][j-1];
 				temp_B    = data_S[lay][0][j];
 				entropy_A = data_S[lay][before][j-1];
@@ -515,7 +514,7 @@ void mag_demag(int time, double Treg[SPACE][TIME], double data_S[LAYER][3][NUM])
 			printf("err mag_demag2!!\n");
 			exit(1);
 		}
-		temp_C = cal_angle(entropy_A, entropy_B, entropy_C, temp_A, temp_B);
+		temp_C = cal_angle(entropy_A, entropy_B, entropy_C, temp_A, temp_B);　　　　//励消磁後のエントロピーから温度変化後の磁性体の温度を決定
 
 		for(j = 0; j < n4; j++){
 			Treg[i][time+j] = temp_C;
@@ -567,7 +566,7 @@ double capacity(int lay, int field, double data_C[LAYER][3][NUM], double imput_t
 	double temp_C = imput_temp;
 
 	for(i = 0; i < NUM; i++){
-		if(temp_C < data_C[lay][0][i]){
+		if(temp_C < data_C[lay][0][i]){     //temp_C(磁性体の温度)と入力したデータの温度を比較して、どの温度の比熱データを使用するか判断する
 			temp_A = data_C[lay][0][i-1];
 			temp_B = data_C[lay][0][i];
 			capa_A = data_C[lay][field][i-1];
@@ -575,7 +574,7 @@ double capacity(int lay, int field, double data_C[LAYER][3][NUM], double imput_t
 			break;
 		}
 
-		if(i == NUM-1){
+		if(i == NUM-1){　　　　　　　　　　　 //磁性体の温度が入力したデータの温度範囲外の時エラーが出る
 			printf("err capacity !!\n");
 			printf("tempC = %f K, data_C = %f K, i = %d\n", temp_C, data_C[lay][0][i], i);
 			exit(1);
@@ -779,14 +778,14 @@ void gnuplot_out(double Treg[SPACE][TIME])
 */
 }
 
-int layer_change(int step, int layer_parameter[LAYER+1])
+int layer_change(int step, int layer_parameter[LAYER+1])  //step=座標
 {
 	int i;
 	int lay;
 
 	for(i = 0; i < LAYER; i++){
 //printf("i =%d\n",step);
-		if(layer_parameter[i] <= step){
+		if(layer_parameter[i] <= step){                   //もしstep=50,layer_parameter[i]=layer_parameter[0],layer_parameter[i+1]=layer_parameter[1]の時、現在の位置は1層目になる。このように、ここでの処理は現在いる層の特定を行っている。
 			if(step < layer_parameter[(i+1)]){
 				return i;
 			}
