@@ -29,20 +29,20 @@ ref,COP�ʤɸ������Ф�0.01%�ʲ�
 
 #define SPACE           (200)    //space step 200
 #define TIME           (2001)    //time  step 2001
-#define N_2            (1000) //1000
-#define N_4             (500) //500
+#define N_2            (1000) 	 //TIMEを2で割ったもの
+#define N_4             (500) 	 //TIMEを4で割ったもの
 
-#define NUM            (1500) //1000
-#define CYCLE_END      (1500) //1000
-#define TAU             (8.0)    //1cycle [sec] 8.0
-#define END          (1.0e-4)    //1.0e-4
+#define NUM            (1500) 	 // 比熱やエントロピーの入力ファイルの行数分を配列として確保するため、定義。余裕を持って多く取ることを推奨。Segmentation fault エラーが出た場合は、メモリ容量が大きいPCで実行するか（これはもしかしたら無意味)、mallocなどでメモリ使用制限をなくすと良い。その際、処理が終わり次第メモリを開放すること。brillouin11.cを参照。
+#define CYCLE_END      (1500) 	 // サイクル数の最大値
+#define TAU             (8.0)    //1cycleにかかる時間[sec]
+#define END          (1.0e-4)    // AMR効果による温度変化が小さくなり、収束したとみなす値
 
-	double Treg[SPACE][TIME];	//磁性体の温度を格納する二次元配列
-	double Tgas[SPACE][TIME]; //流体の温度を格納する二次元配列
+double Treg[SPACE][TIME];	//磁性体の温度を格納する二次元配列
+double Tgas[SPACE][TIME]; //流体の温度を格納する二次元配列
 
-/************************ AUTO m_dot mode *******************/
+/************************ AUTO m_dot[kg/sec] mode *******************/
 #define AUTO
-#ifdef AUTO
+#ifdef AUTO	 									//#defineでAUTOが指定されていれば実行する。それ以外のときは#endifまでの処理は無視される。
 #define M_START     (2.0e-3)	//熱交換流体の質量の下限値
 #define M_END       (3.0e-2)	//熱交換流体の質量の上限値
 #define DM          (5.0e-4)	//熱交換流体の質量の変化幅
@@ -50,14 +50,13 @@ ref,COP�ʤɸ������Ф�0.01%�ʲ�
 
 #define T_HIGH         (36.0)    //high end[K]
 #define T_LOW          (31.0)    //low  end[K]
-#define GAS_FLOW     (1.0e-3)    //m_dot[kg/sec](1秒間に流れる熱交換流体の質量)
 
 //-- LAYER parameter -------------------------------------
-#define LAYER             (2)    //層数（例：2層の場合→2) ※
+#define LAYER             (2)    //層数（例：2層の場合→2)
 
 int layer_parameter[LAYER+1];	//層の区切り目+両端
 
-//-- magnet density [kg/m3] --------------------------------
+//== 関数宣言一覧 ===============================================
 void init_layer(double rho_r[LAYER], int layer_parameter[LAYER+1]);
 /*********************/
 /* RAl2    (6.10e3)  */
@@ -67,19 +66,6 @@ void init_layer(double rho_r[LAYER], int layer_parameter[LAYER+1]);
 //#define RHO_MAG1      (6.10e3)    //RAl2
 //#define RHO_MAG1      (1.03e4)    //ErCo2
 //#define RHO_MAG1     (7.955e3)    //GSG
-
-/* 各磁性体の密度、 充填する位置を与える関数 ※ */
-void init_layer(double rho_r[LAYER], int layer_parameter[LAYER+1])
-{
-	rho_r[0] = 10.3e3;	//1層目の磁性体の密度
-	rho_r[1] = 9.73e3;	//2層目の磁性体の密度
-	layer_parameter[0] = 0;		//高温端の位置
-	layer_parameter[1] = 200;	//層の区切りの位置
-	layer_parameter[2] = 200;	//低温端の位置
-}
-
-
-//== prototype declaration ===============================================
 void initialize(double Tgas[SPACE][TIME], double Treg[SPACE][TIME]);
 void hot_to_cold(double Thigh, double fac1,
 									double fac2[LAYER], double data_C[LAYER][3][NUM],
@@ -99,18 +85,15 @@ void output(FILE *fp_Tgas, FILE *fp_Treg, FILE *fp_simu9_auto, FILE *fp_simu9_da
 						double h, double rho_r[LAYER], double gas_data[5]);
 void gnuplot_out(double Treg[SPACE][TIME]);
 int layer_change(int step, int layer_parameter[LAYER+1]);
-
 double capacity_old(int column, double data_C[5][15], double imput_temp);
-
-//--------------------------------------------------------------------------//
 
 int main(void)
 {
 	int i, j;
 	int cycle;
-	int check;
+	int check;	// 温度が収束したかどうかをチェックした結果を格納するための変数
 	int n2, n4;
-	int n_capa, n_entropy, n_He;
+	int n_capa, n_entropy, n_He;	// 入力ファイルの比熱の行番号、エントロピーの行番号、Heガスの行番号
 	int lay;
 	double fac1, fac2[LAYER];
 	double L,r,Ac,dh,eps,as,h,Aw;
@@ -238,7 +221,7 @@ debyesample9/S_DyAl2_20K_debye.txt
 	Thigh     = T_HIGH;         		//[K]
 	Tlow      = T_LOW;          		//[K]
 	Tmid      = 0.50 * (Thigh + Tlow);	//(K)
-	m_dot     = GAS_FLOW;       		//[kg/sec]
+	// m_dot     = GAS_FLOW;       		//[kg/sec]
 
 	//== bed parameters ==============
 	L         = 0.1;            //[m]:AMRベッドの長さ
@@ -374,6 +357,17 @@ debyesample9/S_DyAl2_20K_debye.txt
 	end_all = clock();
 	printf("プログラム全体の処理時間 = %.2f秒\n", (double)(end_all-start_all)/CLOCKS_PER_SEC);
 	return 0;
+}
+
+/* 各磁性体の密度、 充填する位置を与える関数 ※ */
+// 関数を使用しますという宣言をしたものの実際の処理を記載
+void init_layer(double rho_r[LAYER], int layer_parameter[LAYER+1])
+{
+	rho_r[0] = 10.3e3;	//1層目の磁性体の密度
+	rho_r[1] = 9.73e3;	//2層目の磁性体の密度
+	layer_parameter[0] = 0;		//高温端の位置
+	layer_parameter[1] = 200;	//層の区切りの位置
+	layer_parameter[2] = 200;	//低温端の位置
 }
 
 void initialize(double Tgas[SPACE][TIME], double Treg[SPACE][TIME])
@@ -574,16 +568,16 @@ double capacity(int lay, int field, double data_C[LAYER][3][NUM], double imput_t
 
 	for(i = 0; i < NUM; i++){
 		if(temp_C < data_C[lay][0][i]){
-			 temp_A = data_C[lay][0][i-1];
-			 temp_B = data_C[lay][0][i];
-			 capa_A = data_C[lay][field][i-1];
-			 capa_B = data_C[lay][field][i];
+			temp_A = data_C[lay][0][i-1];
+			temp_B = data_C[lay][0][i];
+			capa_A = data_C[lay][field][i-1];
+			capa_B = data_C[lay][field][i];
 			break;
 		}
 
 		if(i == NUM-1){
 			printf("err capacity !!\n");
-			printf("tempC = %f, i = %d\n", temp_C, i);
+			printf("tempC = %f K, data_C = %f K, i = %d\n", temp_C, data_C[lay][0][i], i);
 			exit(1);
 		}
 	}
@@ -744,7 +738,7 @@ void output(FILE *fp_Tgas, FILE *fp_Treg, FILE *fp_simu9_auto, FILE *fp_simu9_da
 	}
 	//High to Low & L to H last time temperature
 	for(i = 0; i < SPACE; i++){
-		fprintf(fp_Treg, "%d %f %f %f %f %f\n", i,
+		fprintf(fp_Treg, "%d %f %f %f %f %f %d\n", i,
 											Treg[i][n4], Treg[i][n2],
 											Treg[i][n2+n4], Treg[i][TIME-1],  m_dot, cycle);
 	}
