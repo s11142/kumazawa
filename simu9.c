@@ -148,11 +148,11 @@ int main(void)
 	fp_simu9_data   = fopen("simu9-data.txt",  "w");
 
 	/* ファイルの読み込み */
-	fp_simu9_He5atm = fopen("He5atm-data.txt", "r");
-	fp_capa[0]      = fopen("(ErDy)Co2_kg/ErCo2_C_kg.txt", "r"); /* ※ */
-	fp_capa[1]      = fopen("LaNi2_kg_GdNi2_select/C_Tc=70K_Gd3+_LaNi2.txt", "r");	/* ※ */
-	fp_entropy[0] = fopen("(ErDy)Co2_kg/ErCo2_S_kg.txt", "r");	/* ※ */
-	fp_entropy[1] = fopen("LaNi2_kg_GdNi2_select/S_Tc=70K_Gd3+_LaNi2.txt", "r");	/* ※ */
+	fp_simu9_He5atm = fopen("../He5atm-data.txt", "r");
+	fp_capa[0]      = fopen("../(ErDy)Co2_kg/ErCo2_C_kg.txt", "r"); /* ※ */
+	fp_capa[1]      = fopen("../LaNi2_kg_GdNi2_select/C_Tc=70K_Gd3+_LaNi2.txt", "r");	/* ※ */
+	fp_entropy[0] = fopen("../(ErDy)Co2_kg/ErCo2_S_kg.txt", "r");	/* ※ */
+	fp_entropy[1] = fopen("../LaNi2_kg_GdNi2_select/S_Tc=70K_Gd3+_LaNi2.txt", "r");	/* ※ */
 
 /*
 C_ErCo2_0T_5T_02.txt
@@ -746,7 +746,7 @@ void output(FILE *fp_Tgas, FILE *fp_Treg, FILE *fp_simu9_auto, FILE *fp_simu9_da
 	for(i = 0; i < SPACE; i++){
 		fprintf(fp_Treg, "%d %f %f %f %f %f\n", i,
 											Treg[i][n4], Treg[i][n2],
-											Treg[i][n2+n4], Treg[i][TIME-1],  m_dot);
+											Treg[i][n2+n4], Treg[i][TIME-1],  m_dot, cycle);
 	}
 	// #endif
 
